@@ -1,0 +1,43 @@
+{
+  "name": "ludopedia-api",
+  "version": "1.0.0",
+  "description": "Cliente TypeScript / Node.js oficial não-oficial para a LudoAPI v1 da Ludopedia (OpenAPI 3.0).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "ludopedia",
+    "boardgames",
+    "jogos-de-tabuleiro",
+    "ludoapi",
+    "bgg",
+    "collection",
+    "typescript",
+    "api-client"
+  ],
+  "author": "BGHub Team <contato@bghub.com.br>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gianimpronta/ludopedia-api.git"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
