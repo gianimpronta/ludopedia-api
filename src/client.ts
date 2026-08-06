@@ -9,7 +9,12 @@ import {
   LudopediaPlayStats,
 } from "./types";
 import { LudopediaError } from "./errors";
-import { parseLudopediaItems } from "./parser";
+import {
+  parseLudopediaItems,
+  parseLudopediaGameDetails,
+  parseLudopediaPlays,
+  parseLudopediaUser,
+} from "./parser";
 
 export interface LudopediaClientConfig {
   apiToken?: string;
@@ -169,7 +174,8 @@ export class LudopediaClient {
     idJogo: number,
     options: LudopediaFetchOptions = {}
   ): Promise<LudopediaGameDetails> {
-    return this.request<LudopediaGameDetails>(`/jogos/${idJogo}`, options);
+    const raw = await this.request<any>(`/jogos/${idJogo}`, options);
+    return parseLudopediaGameDetails(raw);
   }
 
   async fetchGameExpansions(
@@ -182,13 +188,15 @@ export class LudopediaClient {
 
   // 3. Usuários
   async fetchUserProfile(options: LudopediaFetchOptions = {}): Promise<LudopediaUser> {
-    return this.request<LudopediaUser>(`/usuario/me`, options);
+    const raw = await this.request<any>(`/usuario/me`, options);
+    return parseLudopediaUser(raw);
   }
 
   // 4. Partidas
   async fetchPlays(options: LudopediaFetchOptions = {}): Promise<LudopediaPlay[]> {
     const data = await this.request<any>(`/partidas`, options);
-    return data.partidas || [];
+    const plays = data.partidas || data.items || data;
+    return parseLudopediaPlays(Array.isArray(plays) ? plays : []);
   }
 
   async recordPlay(playData: any, options: LudopediaFetchOptions = {}): Promise<LudopediaPlay> {

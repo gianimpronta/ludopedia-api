@@ -1,4 +1,9 @@
-import { LudopediaCollectionItem } from "./types";
+import {
+  LudopediaCollectionItem,
+  LudopediaGameDetails,
+  LudopediaPlay,
+  LudopediaUser,
+} from "./types";
 
 function parseOptionalInt(val: unknown): number | undefined {
   if (val === undefined || val === null || val === "" || val === "N/A") {
@@ -98,4 +103,66 @@ export function parseLudopediaItems(rawItems: any[]): LudopediaCollectionItem[] 
   }
 
   return collection;
+}
+
+/**
+ * Normaliza os detalhes de um jogo retornados pela LudoAPI v1.
+ */
+export function parseLudopediaGameDetails(raw: any): LudopediaGameDetails {
+  if (!raw || typeof raw !== "object") {
+    return { id_jogo: 0, nm_jogo: "Desconhecido" };
+  }
+
+  return {
+    ...raw,
+    id_jogo: parseOptionalInt(raw.id_jogo || raw.id) ?? 0,
+    nm_jogo: raw.nm_jogo || raw.nome || "Jogo sem nome",
+    ano_publicacao: parseOptionalInt(raw.ano_publicacao || raw.ano),
+    qt_jogadores_min: parseOptionalInt(raw.qt_jogadores_min),
+    qt_jogadores_max: parseOptionalInt(raw.qt_jogadores_max),
+    vl_tempo_min: parseOptionalInt(raw.vl_tempo_min),
+    vl_tempo_max: parseOptionalInt(raw.vl_tempo_max),
+    nota_media: parseOptionalFloat(raw.nota_media || raw.nota_ludopedia),
+    rank: parseOptionalInt(raw.rank),
+    mecanicas: Array.isArray(raw.mecanicas) ? raw.mecanicas : [],
+    categorias: Array.isArray(raw.categorias) ? raw.categorias : [],
+    temas: Array.isArray(raw.temas) ? raw.temas : [],
+  };
+}
+
+/**
+ * Normaliza uma lista de partidas registradas.
+ */
+export function parseLudopediaPlays(rawPlays: any[]): LudopediaPlay[] {
+  if (!Array.isArray(rawPlays)) return [];
+
+  return rawPlays.map((play) => ({
+    ...play,
+    id_partida: parseOptionalInt(play.id_partida || play.id) ?? 0,
+    id_jogo: parseOptionalInt(play.id_jogo) ?? 0,
+    duracao: parseOptionalInt(play.duracao),
+    jogadores: Array.isArray(play.jogadores)
+      ? play.jogadores.map((j: any) => ({
+          ...j,
+          id_usuario: parseOptionalInt(j.id_usuario),
+          fl_vencedor: parseOptionalInt(j.fl_vencedor),
+          vl_pontos: parseOptionalFloat(j.vl_pontos),
+        }))
+      : [],
+  }));
+}
+
+/**
+ * Normaliza o perfil de usuário retornado.
+ */
+export function parseLudopediaUser(raw: any): LudopediaUser {
+  if (!raw || typeof raw !== "object") {
+    return { id_usuario: 0, usuario: "" };
+  }
+
+  return {
+    ...raw,
+    id_usuario: parseOptionalInt(raw.id_usuario || raw.id) ?? 0,
+    usuario: raw.usuario || raw.nm_usuario || "",
+  };
 }

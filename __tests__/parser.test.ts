@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseLudopediaItems } from "../src/parser";
+import {
+  parseLudopediaItems,
+  parseLudopediaGameDetails,
+  parseLudopediaPlays,
+  parseLudopediaUser,
+} from "../src/parser";
 
 describe("parseLudopediaItems", () => {
   it("should return an empty array if input is not an array", () => {
@@ -98,5 +103,69 @@ describe("parseLudopediaItems", () => {
 
     expect(result[2].status.own).toBe(false);
     expect(result[2].status.wishlist).toBe(true);
+  });
+});
+
+describe("parseLudopediaGameDetails", () => {
+  it("should handle null or invalid raw input", () => {
+    expect(parseLudopediaGameDetails(null)).toEqual({ id_jogo: 0, nm_jogo: "Desconhecido" });
+    expect(parseLudopediaGameDetails("invalid" as any)).toEqual({ id_jogo: 0, nm_jogo: "Desconhecido" });
+  });
+
+  it("should parse Game Details safely and sanitize numbers/arrays", () => {
+    const raw = {
+      id_jogo: "123",
+      nm_jogo: "Catan",
+      ano_publicacao: "1995",
+      nota_media: "8.5",
+      mecanicas: null,
+      categorias: undefined,
+    };
+    const details = parseLudopediaGameDetails(raw as any);
+    expect(details.id_jogo).toBe(123);
+    expect(details.ano_publicacao).toBe(1995);
+    expect(details.nota_media).toBe(8.5);
+    expect(details.mecanicas).toEqual([]);
+    expect(details.categorias).toEqual([]);
+  });
+});
+
+describe("parseLudopediaPlays", () => {
+  it("should return empty array if rawPlays is not array", () => {
+    expect(parseLudopediaPlays(null as any)).toEqual([]);
+  });
+
+  it("should parse Plays safely and map players array", () => {
+    const rawList = [
+      {
+        id_partida: "99",
+        id_jogo: "123",
+        duracao: "60",
+        jogadores: [
+          { id_usuario: "10", fl_vencedor: "1", vl_pontos: "100.5" }
+        ],
+      },
+    ];
+    const plays = parseLudopediaPlays(rawList);
+    expect(plays).toHaveLength(1);
+    expect(plays[0].id_partida).toBe(99);
+    expect(plays[0].duracao).toBe(60);
+    expect(plays[0].jogadores).toHaveLength(1);
+    expect(plays[0].jogadores![0].id_usuario).toBe(10);
+    expect(plays[0].jogadores![0].fl_vencedor).toBe(1);
+    expect(plays[0].jogadores![0].vl_pontos).toBe(100.5);
+  });
+});
+
+describe("parseLudopediaUser", () => {
+  it("should handle null or invalid raw input", () => {
+    expect(parseLudopediaUser(null)).toEqual({ id_usuario: 0, usuario: "" });
+  });
+
+  it("should parse User profile safely", () => {
+    const raw = { id_usuario: "50", usuario: "boardgamer" };
+    const user = parseLudopediaUser(raw as any);
+    expect(user.id_usuario).toBe(50);
+    expect(user.usuario).toBe("boardgamer");
   });
 });

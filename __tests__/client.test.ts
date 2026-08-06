@@ -281,6 +281,19 @@ describe("LudopediaClient", () => {
       );
     });
 
+    it("should handle fallbacks when API returns empty objects", async () => {
+      mockFetch = createMockFetch({ data: {} });
+      client = new LudopediaClient({ fetchFn: mockFetch });
+
+      expect(await client.fetchTags()).toEqual([]);
+      expect(await client.searchGames("test")).toEqual([]);
+      expect(await client.fetchGameExpansions(1)).toEqual([]);
+      expect(await client.fetchPlays()).toEqual([]);
+      expect(await client.fetchMechanics()).toEqual([]);
+      expect(await client.fetchCategories()).toEqual([]);
+      expect(await client.fetchThemes()).toEqual([]);
+    });
+
     it("should call fetchThemes", async () => {
       mockFetch = createMockFetch({ data: { temas: [] } });
       client = new LudopediaClient({ fetchFn: mockFetch });
