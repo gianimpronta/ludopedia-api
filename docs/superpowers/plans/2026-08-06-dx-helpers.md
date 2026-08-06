@@ -74,14 +74,18 @@ import { LudopediaCollectionItem, LudopediaFetchOptions } from "../types";
 export async function* streamUserCollection(
   client: LudopediaClient,
   username: string,
-  options: LudopediaFetchOptions & { pageSize?: number } = {}
+  options: LudopediaFetchOptions = {}
 ): AsyncGenerator<LudopediaCollectionItem, void, unknown> {
   let page = 1;
   let hasMore = true;
-  const pageSize = options.pageSize || 100;
+  const pageSize = options.pageSize ?? 100;
+
+  if (pageSize <= 0 || !Number.isInteger(pageSize)) {
+    throw new Error("pageSize deve ser um número inteiro positivo.");
+  }
 
   while (hasMore) {
-    const items = await client.fetchUserCollection(username, { ...options, page } as any);
+    const items = await client.fetchUserCollection(username, { ...options, page, pageSize });
     if (!items || items.length === 0) {
       break;
     }

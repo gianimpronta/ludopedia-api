@@ -160,6 +160,14 @@ describe("LudopediaClient", () => {
       );
     });
 
+    it("fetchUserCollection should include page and pageSize parameters in URL", async () => {
+      await client.fetchUserCollection("john", { page: 3, pageSize: 50 });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("&pagina=3&rows=50"),
+        expect.anything()
+      );
+    });
+
     it("should call fetchCollectionItem", async () => {
       await client.fetchCollectionItem(123);
       expect(mockFetch).toHaveBeenCalledWith(

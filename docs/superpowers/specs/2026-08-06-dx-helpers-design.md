@@ -37,7 +37,7 @@ Iterador assíncrono para navegar pelas páginas da coleção do usuário na Lud
 - **Parâmetros**:
   - `client: LudopediaClient`
   - `username: string`
-  - `options?: LudopediaFetchOptions & { pageSize?: number }`
+  - `options?: LudopediaFetchOptions`
 - **Retorno**: `AsyncGenerator<LudopediaCollectionItem, void, unknown>`
 - **Comportamento**:
   - Inicia na página 1 e incrementa a cada iteração de `for await`.

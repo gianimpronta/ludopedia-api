@@ -124,15 +124,22 @@ export class LudopediaClient {
     username: string,
     options: LudopediaFetchOptions = {}
   ): Promise<LudopediaCollectionItem[]> {
-    const { ownOnly = false, apiToken, fetchFn } = options;
+    const { ownOnly = false, page, pageSize, apiToken, fetchFn } = options;
     const cleanUsername = username.trim();
     if (!cleanUsername) {
       throw new LudopediaError("Nome de usuário da Ludopedia não fornecido.");
     }
 
-    const endpoint = `/colecao?search_usuario=${encodeURIComponent(
+    let endpoint = `/colecao?search_usuario=${encodeURIComponent(
       cleanUsername
     )}&lista=${ownOnly ? "colecao" : "colecao"}`;
+
+    if (page) {
+      endpoint += `&pagina=${page}`;
+    }
+    if (pageSize) {
+      endpoint += `&rows=${pageSize}`;
+    }
 
     const data = await this.request<any>(endpoint, { apiToken, fetchFn });
     const items = data.colecao || data.jogos || data.items || data;
