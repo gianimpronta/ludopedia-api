@@ -15,22 +15,26 @@ export interface LudopediaClientConfig {
   apiToken?: string;
   baseUrl?: string;
   fetchFn?: typeof fetch;
+  maxRetries?: number;
+  retryDelayMs?: number;
 }
 
 export class LudopediaClient {
   private apiToken?: string;
   private baseUrl: string;
   private fetchFn: typeof fetch;
+  private maxRetries: number;
+  private retryDelayMs: number;
 
   constructor(config: LudopediaClientConfig = {}) {
     this.apiToken =
       config.apiToken ||
-      (typeof globalThis !== "undefined" &&
-        (globalThis as any).process?.env?.LUDOPEDIA_API_TOKEN);
+      (typeof globalThis !== "undefined" && (globalThis as any).process?.env?.LUDOPEDIA_API_TOKEN);
     this.baseUrl = config.baseUrl || "https://ludopedia.com.br/api/v1";
     this.fetchFn = config.fetchFn || globalThis.fetch;
+    this.maxRetries = config.maxRetries ?? 0;
+    this.retryDelayMs = config.retryDelayMs ?? 500;
   }
-
 
   private getHeaders(customToken?: string): Record<string, string> {
     const token = customToken || this.apiToken;
@@ -56,40 +60,53 @@ export class LudopediaClient {
     const url = endpoint.startsWith("http") ? endpoint : `${this.baseUrl}${endpoint}`;
     const headers = this.getHeaders(apiToken);
 
-    try {
-      const res = await fetchFn(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        const res = await fetchFn(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
 
-      if (res.status === 401) {
+        if ((res.status === 429 || res.status >= 500) && attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * Math.pow(2, attempt)));
+          continue;
+        }
+
+        if (res.status === 401) {
+          throw new LudopediaError(
+            "Acesso não autorizado à API da Ludopedia. Informe um Bearer token válido.",
+            401
+          );
+        }
+
+        if (res.status === 404) {
+          throw new LudopediaError("Recurso não encontrado na Ludopedia.", 404);
+        }
+
+        if (!res.ok) {
+          throw new LudopediaError(
+            `Erro na comunicação com a Ludopedia (Status HTTP ${res.status}).`,
+            res.status
+          );
+        }
+
+        return await res.json();
+      } catch (err: unknown) {
+        if (err instanceof LudopediaError) throw err;
+        if (attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * Math.pow(2, attempt)));
+          continue;
+        }
         throw new LudopediaError(
-          "Acesso não autorizado à API da Ludopedia. Informe um Bearer token válido.",
-          401
+          `Falha na requisição para a API da Ludopedia: ${
+            err instanceof Error ? err.message : "Erro desconhecido"
+          }`
         );
       }
-
-      if (res.status === 404) {
-        throw new LudopediaError("Recurso não encontrado na Ludopedia.", 404);
-      }
-
-      if (!res.ok) {
-        throw new LudopediaError(
-          `Erro na comunicação com a Ludopedia (Status HTTP ${res.status}).`,
-          res.status
-        );
-      }
-
-      return await res.json();
-    } catch (err: unknown) {
-      if (err instanceof LudopediaError) throw err;
-      throw new LudopediaError(
-        `Falha na requisição para a API da Ludopedia: ${
-          err instanceof Error ? err.message : "Erro desconhecido"
-        }`
-      );
     }
+
+    throw new LudopediaError("Falha na requisição após tentativas excedidas.");
   }
 
   // 1. Coleção
@@ -116,7 +133,10 @@ export class LudopediaClient {
     return this.request<any>(`/colecao/item/${idJogo}`, options);
   }
 
-  async updateCollectionItem(jogoUsuarioData: any, options: LudopediaFetchOptions = {}): Promise<any> {
+  async updateCollectionItem(
+    jogoUsuarioData: any,
+    options: LudopediaFetchOptions = {}
+  ): Promise<any> {
     return this.request<any>(`/colecao`, { method: "POST", body: jogoUsuarioData, ...options });
   }
 
@@ -137,16 +157,25 @@ export class LudopediaClient {
   }
 
   // 2. Jogos
-  async searchGames(query: string, options: LudopediaFetchOptions = {}): Promise<LudopediaGameSummary[]> {
+  async searchGames(
+    query: string,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameSummary[]> {
     const data = await this.request<any>(`/jogos?search=${encodeURIComponent(query)}`, options);
     return data.jogos || [];
   }
 
-  async fetchGameDetails(idJogo: number, options: LudopediaFetchOptions = {}): Promise<LudopediaGameDetails> {
+  async fetchGameDetails(
+    idJogo: number,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameDetails> {
     return this.request<LudopediaGameDetails>(`/jogos/${idJogo}`, options);
   }
 
-  async fetchGameExpansions(idJogo: number, options: LudopediaFetchOptions = {}): Promise<LudopediaGameSummary[]> {
+  async fetchGameExpansions(
+    idJogo: number,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameSummary[]> {
     const data = await this.request<any>(`/jogos/${idJogo}/expansoes`, options);
     return data.jogos || [];
   }

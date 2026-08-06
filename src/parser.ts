@@ -60,8 +60,13 @@ export function parseLudopediaItems(rawItems: any[]): LudopediaCollectionItem[] 
     const numPlays = parseOptionalInt(item.qt_partidas) ?? 0;
     const comment = item.comentario || item.ds_comentario;
 
-    const flTem = item.fl_tem === 1 || item.fl_tem === "1" || item.status_posse === "tem" || item.own === true;
-    const flQuero = item.fl_desejo === 1 || item.fl_desejo === "1" || item.status_posse === "quero" || item.wishlist === true;
+    const flTem =
+      item.fl_tem === 1 || item.fl_tem === "1" || item.status_posse === "tem" || item.own === true;
+    const flQuero =
+      item.fl_desejo === 1 ||
+      item.fl_desejo === "1" ||
+      item.status_posse === "quero" ||
+      item.wishlist === true;
     const flJaTive = item.fl_jative === 1 || item.fl_jative === "1";
     const flTroca = item.fl_troca === 1 || item.fl_troca === "1";
 

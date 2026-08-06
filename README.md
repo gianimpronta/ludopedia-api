@@ -36,6 +36,7 @@ const ludopedia = new LudopediaClient({
 ## 🚀 Exemplos de Uso
 
 ### 1. Importar Coleção de Usuário
+
 ```ts
 import { LudopediaClient } from "ludopedia-api";
 
@@ -56,18 +57,21 @@ main();
 ```
 
 ### 2. Pesquisar Jogos no Catálogo
+
 ```ts
 const games = await ludopedia.searchGames("Catan");
 console.log(games);
 ```
 
 ### 3. Ficha Detalhada do Jogo
+
 ```ts
 const details = await ludopedia.fetchGameDetails(397);
 console.log(details);
 ```
 
 ### 4. Partidas e Estatísticas
+
 ```ts
 const plays = await ludopedia.fetchPlays();
 const stats = await ludopedia.fetchPlayStats();
@@ -77,4 +81,5 @@ console.log(stats);
 ---
 
 ## 📄 Licença
+
 MIT © BGHub
