@@ -31,6 +31,7 @@ src/
 ## 3. Especificação do Módulo de Paginação (`src/helpers/pagination.ts`)
 
 ### `streamUserCollection`
+
 Iterador assíncrono para navegar pelas páginas da coleção do usuário na Ludopedia.
 
 - **Parâmetros**:
@@ -47,12 +48,14 @@ Iterador assíncrono para navegar pelas páginas da coleção do usuário na Lud
 ## 4. Especificação do Módulo de Estatísticas (`src/helpers/stats.ts`)
 
 ### `calculateHIndex`
+
 Calcula o índice H (H-Index) a partir de uma coleção ou lista contendo quantidade de partidas (`numPlays`).
 
 - **Parâmetros**: `collection: { numPlays: number }[]`
 - **Retorno**: `number` (Ex: H-Index 10 significa 10 jogos com no mínimo 10 partidas registradas).
 
 ### `calculateWinRate`
+
 Calcula a taxa de vitórias de um determinado usuário dentro de uma lista de partidas (`LudopediaPlay[]`).
 
 - **Parâmetros**:
