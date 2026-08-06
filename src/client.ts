@@ -125,6 +125,14 @@ export class LudopediaClient {
     options: LudopediaFetchOptions = {}
   ): Promise<LudopediaCollectionItem[]> {
     const { ownOnly = false, page, pageSize, apiToken, fetchFn } = options;
+
+    if (page !== undefined && (!Number.isInteger(page) || page < 1)) {
+      throw new LudopediaError("O parâmetro 'page' deve ser um número inteiro positivo.");
+    }
+    if (pageSize !== undefined && (!Number.isInteger(pageSize) || pageSize < 1)) {
+      throw new LudopediaError("O parâmetro 'pageSize' deve ser um número inteiro positivo.");
+    }
+
     const cleanUsername = username.trim();
     if (!cleanUsername) {
       throw new LudopediaError("Nome de usuário da Ludopedia não fornecido.");
@@ -134,10 +142,10 @@ export class LudopediaClient {
       cleanUsername
     )}&lista=${ownOnly ? "colecao" : "colecao"}`;
 
-    if (page) {
+    if (page !== undefined) {
       endpoint += `&pagina=${page}`;
     }
-    if (pageSize) {
+    if (pageSize !== undefined) {
       endpoint += `&rows=${pageSize}`;
     }
 

@@ -160,6 +160,15 @@ describe("LudopediaClient", () => {
       );
     });
 
+    it("fetchUserCollection should throw if page or pageSize are invalid", async () => {
+      await expect(client.fetchUserCollection("john", { page: 0 })).rejects.toThrowError(
+        LudopediaError
+      );
+      await expect(client.fetchUserCollection("john", { pageSize: -1 })).rejects.toThrowError(
+        LudopediaError
+      );
+    });
+
     it("fetchUserCollection should include page and pageSize parameters in URL", async () => {
       await client.fetchUserCollection("john", { page: 3, pageSize: 50 });
       expect(mockFetch).toHaveBeenCalledWith(
