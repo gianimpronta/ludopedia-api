@@ -9,28 +9,37 @@ import {
   LudopediaPlayStats,
 } from "./types";
 import { LudopediaError } from "./errors";
-import { parseLudopediaItems } from "./parser";
+import {
+  parseLudopediaItems,
+  parseLudopediaGameDetails,
+  parseLudopediaPlays,
+  parseLudopediaUser,
+} from "./parser";
 
 export interface LudopediaClientConfig {
   apiToken?: string;
   baseUrl?: string;
   fetchFn?: typeof fetch;
+  maxRetries?: number;
+  retryDelayMs?: number;
 }
 
 export class LudopediaClient {
   private apiToken?: string;
   private baseUrl: string;
   private fetchFn: typeof fetch;
+  private maxRetries: number;
+  private retryDelayMs: number;
 
   constructor(config: LudopediaClientConfig = {}) {
     this.apiToken =
       config.apiToken ||
-      (typeof globalThis !== "undefined" &&
-        (globalThis as any).process?.env?.LUDOPEDIA_API_TOKEN);
+      (typeof globalThis !== "undefined" && (globalThis as any).process?.env?.LUDOPEDIA_API_TOKEN);
     this.baseUrl = config.baseUrl || "https://ludopedia.com.br/api/v1";
     this.fetchFn = config.fetchFn || globalThis.fetch;
+    this.maxRetries = config.maxRetries ?? 0;
+    this.retryDelayMs = config.retryDelayMs ?? 500;
   }
-
 
   private getHeaders(customToken?: string): Record<string, string> {
     const token = customToken || this.apiToken;
@@ -56,43 +65,61 @@ export class LudopediaClient {
     const url = endpoint.startsWith("http") ? endpoint : `${this.baseUrl}${endpoint}`;
     const headers = this.getHeaders(apiToken);
 
-    try {
-      const res = await fetchFn(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        const res = await fetchFn(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
 
-      if (res.status === 401) {
+        if ((res.status === 429 || res.status >= 500) && attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * Math.pow(2, attempt)));
+          continue;
+        }
+
+        if (res.status === 401) {
+          throw new LudopediaError(
+            "Acesso não autorizado à API da Ludopedia. Informe um Bearer token válido.",
+            401
+          );
+        }
+
+        if (res.status === 404) {
+          throw new LudopediaError("Recurso não encontrado na Ludopedia.", 404);
+        }
+
+        if (!res.ok) {
+          throw new LudopediaError(
+            `Erro na comunicação com a Ludopedia (Status HTTP ${res.status}).`,
+            res.status
+          );
+        }
+
+        return await res.json();
+      } catch (err: unknown) {
+        if (err instanceof LudopediaError) throw err;
+        if (attempt < this.maxRetries) {
+          await new Promise((r) => setTimeout(r, this.retryDelayMs * Math.pow(2, attempt)));
+          continue;
+        }
         throw new LudopediaError(
-          "Acesso não autorizado à API da Ludopedia. Informe um Bearer token válido.",
-          401
+          `Falha na requisição para a API da Ludopedia: ${
+            err instanceof Error ? err.message : "Erro desconhecido"
+          }`
         );
       }
-
-      if (res.status === 404) {
-        throw new LudopediaError("Recurso não encontrado na Ludopedia.", 404);
-      }
-
-      if (!res.ok) {
-        throw new LudopediaError(
-          `Erro na comunicação com a Ludopedia (Status HTTP ${res.status}).`,
-          res.status
-        );
-      }
-
-      return await res.json();
-    } catch (err: unknown) {
-      if (err instanceof LudopediaError) throw err;
-      throw new LudopediaError(
-        `Falha na requisição para a API da Ludopedia: ${
-          err instanceof Error ? err.message : "Erro desconhecido"
-        }`
-      );
     }
+
+    throw new LudopediaError("Falha na requisição após tentativas excedidas.");
   }
 
   // 1. Coleção
+  /**
+   * Busca a coleção de jogos de um determinado usuário na Ludopedia.
+   * @param username O nome de usuário na plataforma.
+   * @param options Opções adicionais de busca (ex: ownOnly, token customizado).
+   */
   async fetchUserCollection(
     username: string,
     options: LudopediaFetchOptions = {}
@@ -112,19 +139,35 @@ export class LudopediaClient {
     return parseLudopediaItems(items);
   }
 
+  /**
+   * Obtém as informações completas de um item da coleção por ID do jogo.
+   * @param idJogo ID numérico do jogo.
+   */
   async fetchCollectionItem(idJogo: number, options: LudopediaFetchOptions = {}): Promise<any> {
     return this.request<any>(`/colecao/item/${idJogo}`, options);
   }
 
-  async updateCollectionItem(jogoUsuarioData: any, options: LudopediaFetchOptions = {}): Promise<any> {
+  /**
+   * Atualiza ou adiciona um item na coleção de um usuário.
+   */
+  async updateCollectionItem(
+    jogoUsuarioData: any,
+    options: LudopediaFetchOptions = {}
+  ): Promise<any> {
     return this.request<any>(`/colecao`, { method: "POST", body: jogoUsuarioData, ...options });
   }
 
+  /**
+   * Lista as tags cadastradas pelo usuário.
+   */
   async fetchTags(options: LudopediaFetchOptions = {}): Promise<LudopediaTag[]> {
     const data = await this.request<any>(`/colecao/tags`, options);
     return data.tags || [];
   }
 
+  /**
+   * Salva ou cria uma nova tag.
+   */
   async saveTag(
     tag: { id_usuario_tag?: number; nm_tag: string },
     options: LudopediaFetchOptions = {}
@@ -132,55 +175,100 @@ export class LudopediaClient {
     return this.request<LudopediaTag>(`/colecao/tags`, { method: "POST", body: tag, ...options });
   }
 
+  /**
+   * Remove uma tag pelo ID.
+   */
   async deleteTag(idUsuarioTag: number, options: LudopediaFetchOptions = {}): Promise<void> {
     await this.request<void>(`/colecao/tags/${idUsuarioTag}`, { method: "DELETE", ...options });
   }
 
   // 2. Jogos
-  async searchGames(query: string, options: LudopediaFetchOptions = {}): Promise<LudopediaGameSummary[]> {
+  /**
+   * Pesquisa jogos no catálogo da Ludopedia pelo nome.
+   */
+  async searchGames(
+    query: string,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameSummary[]> {
     const data = await this.request<any>(`/jogos?search=${encodeURIComponent(query)}`, options);
     return data.jogos || [];
   }
 
-  async fetchGameDetails(idJogo: number, options: LudopediaFetchOptions = {}): Promise<LudopediaGameDetails> {
-    return this.request<LudopediaGameDetails>(`/jogos/${idJogo}`, options);
+  /**
+   * Busca a ficha detalhada de um jogo na Ludopedia.
+   */
+  async fetchGameDetails(
+    idJogo: number,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameDetails> {
+    const raw = await this.request<any>(`/jogos/${idJogo}`, options);
+    return parseLudopediaGameDetails(raw);
   }
 
-  async fetchGameExpansions(idJogo: number, options: LudopediaFetchOptions = {}): Promise<LudopediaGameSummary[]> {
+  /**
+   * Lista todas as expansões vinculadas a um jogo específico.
+   */
+  async fetchGameExpansions(
+    idJogo: number,
+    options: LudopediaFetchOptions = {}
+  ): Promise<LudopediaGameSummary[]> {
     const data = await this.request<any>(`/jogos/${idJogo}/expansoes`, options);
     return data.jogos || [];
   }
 
   // 3. Usuários
+  /**
+   * Obtém os dados do perfil do usuário autenticado no token atual.
+   */
   async fetchUserProfile(options: LudopediaFetchOptions = {}): Promise<LudopediaUser> {
-    return this.request<LudopediaUser>(`/usuario/me`, options);
+    const raw = await this.request<any>(`/usuario/me`, options);
+    return parseLudopediaUser(raw);
   }
 
   // 4. Partidas
+  /**
+   * Obtém a lista de partidas registradas pelo usuário.
+   */
   async fetchPlays(options: LudopediaFetchOptions = {}): Promise<LudopediaPlay[]> {
     const data = await this.request<any>(`/partidas`, options);
-    return data.partidas || [];
+    const plays = data.partidas || data.items || data;
+    return parseLudopediaPlays(Array.isArray(plays) ? plays : []);
   }
 
+  /**
+   * Registra uma nova partida na plataforma.
+   */
   async recordPlay(playData: any, options: LudopediaFetchOptions = {}): Promise<LudopediaPlay> {
     return this.request<LudopediaPlay>(`/partidas`, { method: "POST", body: playData, ...options });
   }
 
+  /**
+   * Obtém as estatísticas gerais de partidas registradas.
+   */
   async fetchPlayStats(options: LudopediaFetchOptions = {}): Promise<LudopediaPlayStats> {
     return this.request<LudopediaPlayStats>(`/partidas/estatisticas`, options);
   }
 
   // 5. Extra
+  /**
+   * Lista todas as mecânicas cadastradas no banco de dados da Ludopedia.
+   */
   async fetchMechanics(options: LudopediaFetchOptions = {}): Promise<any[]> {
     const data = await this.request<any>(`/mecanicas`, options);
     return data.mecanicas || [];
   }
 
+  /**
+   * Lista todas as categorias cadastradas na Ludopedia.
+   */
   async fetchCategories(options: LudopediaFetchOptions = {}): Promise<any[]> {
     const data = await this.request<any>(`/categorias`, options);
     return data.categorias || [];
   }
 
+  /**
+   * Lista todos os temas cadastrados na Ludopedia.
+   */
   async fetchThemes(options: LudopediaFetchOptions = {}): Promise<any[]> {
     const data = await this.request<any>(`/temas`, options);
     return data.temas || [];

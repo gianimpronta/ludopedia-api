@@ -28,6 +28,30 @@ import { LudopediaClient } from "ludopedia-api";
 
 const ludopedia = new LudopediaClient({
   apiToken: "SEU_LUDOPEDIA_ACCESS_TOKEN",
+  maxRetries: 3, // Tentativas automáticas em erros 429/5xx (opcional)
+  retryDelayMs: 1000, // Delay base exponencial (opcional)
+});
+```
+
+---
+
+## ⚡ Caching e Retries Automáticos
+
+### Retries Automáticos (Rate Limit 429 / HTTP 5xx)
+
+Se a API da Ludopedia responder com `429 Too Many Requests` ou erros no servidor (5xx), o cliente tentará novamente de forma transparente com _Exponential Backoff_:
+
+```ts
+const ludopedia = new LudopediaClient({ maxRetries: 2 });
+```
+
+### Injeção de Cache (ex: Next.js)
+
+É possível passar uma função `fetchFn` personalizada para reaproveitar caches nativos de frameworks:
+
+```ts
+const ludopedia = new LudopediaClient({
+  fetchFn: (url, init) => fetch(url, { ...init, next: { revalidate: 3600 } }),
 });
 ```
 
@@ -36,6 +60,7 @@ const ludopedia = new LudopediaClient({
 ## 🚀 Exemplos de Uso
 
 ### 1. Importar Coleção de Usuário
+
 ```ts
 import { LudopediaClient } from "ludopedia-api";
 
@@ -56,18 +81,21 @@ main();
 ```
 
 ### 2. Pesquisar Jogos no Catálogo
+
 ```ts
 const games = await ludopedia.searchGames("Catan");
 console.log(games);
 ```
 
 ### 3. Ficha Detalhada do Jogo
+
 ```ts
 const details = await ludopedia.fetchGameDetails(397);
 console.log(details);
 ```
 
 ### 4. Partidas e Estatísticas
+
 ```ts
 const plays = await ludopedia.fetchPlays();
 const stats = await ludopedia.fetchPlayStats();
@@ -77,4 +105,5 @@ console.log(stats);
 ---
 
 ## 📄 Licença
+
 MIT © BGHub
