@@ -109,7 +109,10 @@ describe("parseLudopediaItems", () => {
 describe("parseLudopediaGameDetails", () => {
   it("should handle null or invalid raw input", () => {
     expect(parseLudopediaGameDetails(null)).toEqual({ id_jogo: 0, nm_jogo: "Desconhecido" });
-    expect(parseLudopediaGameDetails("invalid" as any)).toEqual({ id_jogo: 0, nm_jogo: "Desconhecido" });
+    expect(parseLudopediaGameDetails("invalid" as any)).toEqual({
+      id_jogo: 0,
+      nm_jogo: "Desconhecido",
+    });
   });
 
   it("should parse Game Details safely and sanitize numbers/arrays", () => {
@@ -141,9 +144,7 @@ describe("parseLudopediaPlays", () => {
         id_partida: "99",
         id_jogo: "123",
         duracao: "60",
-        jogadores: [
-          { id_usuario: "10", fl_vencedor: "1", vl_pontos: "100.5" }
-        ],
+        jogadores: [{ id_usuario: "10", fl_vencedor: "1", vl_pontos: "100.5" }],
       },
     ];
     const plays = parseLudopediaPlays(rawList);

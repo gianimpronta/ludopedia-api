@@ -102,6 +102,33 @@ const stats = await ludopedia.fetchPlayStats();
 console.log(stats);
 ```
 
+### 5. Paginação Assíncrona (`streamUserCollection`)
+
+```ts
+import { LudopediaClient, streamUserCollection } from "ludopedia-api";
+
+const ludopedia = new LudopediaClient();
+
+// Iterador assíncrono para navegar pelas páginas da coleção de forma lazy
+for await (const item of streamUserCollection(ludopedia, "nome_do_usuario")) {
+  console.log(`- ${item.name}`);
+}
+```
+
+### 6. Cálculos Estatísticos (`calculateHIndex`, `calculateWinRate`)
+
+```ts
+import { calculateHIndex, calculateWinRate } from "ludopedia-api";
+
+const collection = await ludopedia.fetchUserCollection("nome_do_usuario");
+const hIndex = calculateHIndex(collection);
+console.log(`H-Index da Coleção: ${hIndex}`);
+
+const plays = await ludopedia.fetchPlays();
+const userWinStats = calculateWinRate(plays, 12345); // ID do usuário
+console.log(`Taxa de Vitória: ${userWinStats.winRate}%`);
+```
+
 ---
 
 ## 📄 Licença

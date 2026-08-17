@@ -26,6 +26,8 @@ export interface LudopediaCollectionItem {
 
 export interface LudopediaFetchOptions {
   ownOnly?: boolean;
+  page?: number;
+  pageSize?: number;
   apiToken?: string;
   fetchFn?: typeof fetch;
 }
